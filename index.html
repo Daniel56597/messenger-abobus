@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Abobus Messenger BETA</title>
+    <style>
+        :root { --bg: #0e1621; --side: #17212b; --active: #2b5278; --txt: #ffffff; --accent: #2481cc; --border: #232e3c; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--txt); font-family: sans-serif; height: 100vh; overflow: hidden; }
+        
+        /* Авторизация */
+        #auth { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; }
+        .card { background: var(--side); padding: 30px; border-radius: 12px; width: 300px; text-align: center; border: 1px solid var(--border); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid var(--border); background: #000; color: #fff; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: var(--accent); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* Интерфейс (как на фото) */
+        #main { display: none; height: 100vh; flex-direction: row; }
+        .tabs { width: 70px; background: var(--side); display: flex; flex-direction: column; align-items: center; padding-top: 15px; border-right: 1px solid var(--border); }
+        .tab { width: 45px; height: 45px; margin-bottom: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #242f3d; font-size: 20px; }
+        .tab:hover { background: var(--active); }
+        
+        .chat-list { width: 350px; background: var(--side); border-right: 1px solid var(--border); overflow-y: auto; }
+        .user-item { padding: 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; cursor: pointer; transition: 0.2s; }
+        .user-item:hover { background: #202b36; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; background: #444; margin-right: 12px; object-fit: cover; border: 1px solid var(--accent); }
+
+        .chat-window { flex-grow: 1; display: flex; flex-direction: column; background: #0e1621 url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: overlay; }
+        #msgs { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+        .msg { background: var(--side); padding: 10px 15px; border-radius: 12px; margin-bottom: 8px; max-width: 70%; border: 1px solid var(--border); position: relative; }
+        .my-msg { align-self: flex-end; background: var(--active); border-color: var(--accent); }
+
+        /* Админ-панель */
+        #admin-panel { display: none; position: fixed; top: 5%; left: 5%; width: 90%; height: 90%; background: var(--side); z-index: 1000; padding: 20px; border: 2px solid var(--accent); border-radius: 15px; box-shadow: 0 0 100px #000; overflow-y: auto; }
+        .admin-user { display: flex; justify-content: space-between; padding: 10px; background: var(--bg); margin-bottom: 5px; border-radius: 5px; align-items: center; }
+        .ban-btn { background: #e53935; width: auto; padding: 5px 15px; font-size: 12px; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth">
+        <div class="card">
+            <h2>Abobus <span style="color:var(--accent); font-size: 14px;">BETA</span></h2>
+            <input type="text" id="phone" placeholder="Номер телефона">
+            <input type="password" id="pass" placeholder="Пароль">
+            <button onclick="app.login()">Войти</button>
+            <p style="font-size: 11px; color: #555; cursor: pointer; margin-top: 15px;" onclick="app.adminAuth()">Вход для разработчика</p>
+        </div>
+    </div>
+
+    <div id="main">
+        <div class="tabs">
+            <div class="tab">💬</div>
+            <div class="tab">👥</div>
+            <div class="tab" id="admin-btn" style="display:none" onclick="app.toggleAdmin()">🛡️</div>
+            <div class="tab" style="margin-top:auto" onclick="location.reload()">🚪</div>
+        </div>
+        
+        <div class="chat-list" id="user-list">
+            <div style="padding: 20px; opacity: 0.5;">Загрузка чатов...</div>
+        </div>
+
+        <div class="chat-window">
+            <div id="msgs"></div>
+            <div style="padding: 20px; background: var(--side); display: flex; border-top: 1px solid var(--border);">
+                <input type="text" id="m-input" placeholder="Напишите сообщение..." style="margin:0; margin-right:10px;">
+                <button onclick="app.send()" style="width: 60px;">📲</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>🛡️ Управление Абобусом</h2>
+            <button onclick="app.toggleAdmin()" style="width: 100px; background: #444;">Закрыть</button>
+        </div>
+        <hr border="1" color="#232e3c">
+        <div id="admin-users-view"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, update } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
+
+        // ТВОИ ДАННЫЕ ИЗ СКРИНШОТОВ
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpycXGblhaM5d4LLF9o5hmXHKluJDre8Q",
+            authDomain: "abobus-2dd7a.firebaseapp.com",
+            projectId: "abobus-2dd7a",
+            storageBucket: "abobus-2dd7a.firebasestorage.app",
+            messagingSenderId: "40388975055",
+            appId: "1:40388975055:web:b6cb9195e25835381e5aba",
+            databaseURL: "https://abobus-2dd7a-default-rtdb.firebaseio.com"
+        };
+
+        const fApp = initializeApp(firebaseConfig);
+        const db = getDatabase(fApp);
+        const ADMIN_CODE = "0000"; // Пароль админа, меняй тут!
+
+        window.app = {
+            me: null,
+            isAdmin: false,
+
+            login() {
+                const p = document.getElementById('phone').value;
+                if(p.length < 3) return alert("Введите номер");
+                this.me = p.replace(/\D/g, "");
+                
+                // Проверка/создание в базе
+                set(ref(db, 'users/' + this.me), { 
+                    phone: this.me, 
+                    avatar: "https://ui-avatars.com/api/?name=" + this.me, 
+                    banned: false 
+                });
+
+                document.getElementById('auth').style.display = 'none';
+                document.getElementById('main').style.display = 'flex';
+                this.startSync();
+            },
+
+            adminAuth() {
+                if(prompt("Код доступа:") === ADMIN_CODE) {
+                    this.isAdmin = true;
+                    document.getElementById('admin-btn').style.display = 'flex';
+                    this.login();
+                }
+            },
+
+            send() {
+                const val = document.getElementById('m-input').value;
+                if(!val) return;
+                push(ref(db, 'messages'), { u: this.me, t: val, d: Date.now() });
+                document.getElementById('m-input').value = "";
+            },
+
+            startSync() {
+                // Слушаем юзеров
+                onValue(ref(db, 'users'), (s) => {
+                    const data = s.val();
+                    const list = document.getElementById('user-list');
+                    const aList = document.getElementById('admin-users-view');
+                    list.innerHTML = ""; aList.innerHTML = "";
+
+                    for(let id in data) {
+                        const u = data[id];
+                        // Список чатов
+                        list.innerHTML += `<div class="user-item"><img src="${u.avatar}" class="avatar"><div><b>${u.phone}</b><br><small style="color:gray">Написать...</small></div></div>`;
+                        
+                        // Список в админке
+                        aList.innerHTML += `<div class="admin-user">
+                            <span>${u.phone} [Бан: ${u.banned}]</span>
+                            <div>
+                                <button class="ban-btn" onclick="app.setBan('${id}', true)">БАН</button>
+                                <button class="ban-btn" style="background:green" onclick="app.setBan('${id}', false)">РАЗБАН</button>
+                            </div>
+                        </div>`;
+
+                        if(u.phone === this.me && u.banned) {
+                            alert("ВАШ АККАУНТ ЗАБЛОКИРОВАН АДМИНИСТРАЦИЕЙ");
+                            location.reload();
+                        }
+                    }
+                });
+
+                // Слушаем сообщения
+                onValue(ref(db, 'messages'), (s) => {
+                    const box = document.getElementById('msgs');
+                    box.innerHTML = "";
+                    const data = s.val();
+                    for(let id in data) {
+                        const m = data[id];
+                        const isMe = m.u === this.me;
+                        box.innerHTML += `<div class="msg ${isMe ? 'my-msg' : ''}"><b>${m.u}:</b><br>${m.t}</div>`;
+                    }
+                    box.scrollTop = box.scrollHeight;
+                });
+            },
+
+            toggleAdmin() {
+                const p = document.getElementById('admin-panel');
+                p.style.display = p.style.display === 'block' ? 'none' : 'block';
+            },
+
+            setBan(id, state) {
+                update(ref(db, 'users/' + id), { banned: state });
+            }
+        };
+    </script>
+</body>
+</html>
