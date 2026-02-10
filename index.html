@@ -3,105 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Abobus Messenger Premium BETA</title>
+    <title>Abobus Messages</title>
     <style>
-        :root { --bg: #0e1621; --side: #17212b; --active: #2b5278; --txt: #ffffff; --accent: #2481cc; --border: #232e3c; }
+        :root { --bg: #0e1621; --side: #17212b; --active: #2b5278; --txt: #ffffff; --accent: #2481cc; --border: #232e3c; --verify: #00c853; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--txt); font-family: -apple-system, sans-serif; height: 100vh; overflow: hidden; }
         
-        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--txt); 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            height: 100vh; width: 100vw; overflow: hidden; }
+        /* UI Elements */
+        .verify-badge { color: var(--verify); margin-left: 5px; font-size: 14px; }
+        .tab-btn { display: flex; flex-direction: column; align-items: center; font-size: 10px; cursor: pointer; color: #888; transition: 0.3s; }
+        .tab-btn i { font-size: 20px; margin-bottom: 4px; }
+        .tab-btn.active { color: var(--accent); }
 
-        /* Авторизация */
-        #auth { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; background: #0e1621; }
-        .card { background: var(--side); padding: 30px; border-radius: 20px; width: 90%; max-width: 320px; text-align: center; border: 1px solid var(--border); }
-        input { width: 100%; padding: 14px; margin: 10px 0; border-radius: 10px; border: 1px solid var(--border); background: #000; color: #fff; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 14px; background: var(--accent); border: none; color: white; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
-
-        /* Основной экран - Адаптивная сетка */
-        #main { display: none; height: 100vh; width: 100vw; flex-direction: row; }
-
-        /* Боковые вкладки (Скрываем на маленьких телефонах для экономии места или уменьшаем) */
-        .tabs { width: 70px; background: var(--side); display: flex; flex-direction: column; align-items: center; padding-top: 20px; border-right: 1px solid var(--border); flex-shrink: 0; }
+        #main { display: none; height: 100vh; display: flex; flex-direction: row; }
+        .sidebar { width: 70px; background: var(--side); display: flex; flex-direction: column; align-items: center; padding: 20px 0; border-right: 1px solid var(--border); }
+        .content-list { width: 300px; background: var(--side); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
         
-        /* Список чатов */
-        .chat-list { width: 300px; background: var(--side); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; }
-        
-        /* Окно чата */
-        .chat-window { flex-grow: 1; display: flex; flex-direction: column; background-size: cover; background-position: center; position: relative; }
-        #msgs { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; background: rgba(14, 22, 33, 0.7); }
-        
-        .msg { background: var(--side); padding: 10px 14px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; border: 1px solid var(--border); word-wrap: break-word; font-size: 15px; }
-        .my-msg { align-self: flex-end; background: var(--active); border-color: var(--accent); }
+        /* Chats & Messages */
+        .chat-area { flex-grow: 1; display: flex; flex-direction: column; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: overlay; background-color: var(--bg); }
+        #msgs { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+        .msg { background: var(--side); padding: 10px; border-radius: 12px; margin-bottom: 10px; max-width: 80%; }
+        .my-msg { align-self: flex-end; background: var(--active); }
 
-        /* Поле ввода */
-        .input-area { padding: 10px; background: var(--side); display: flex; align-items: center; border-top: 1px solid var(--border); }
-        .input-area input { margin: 0; margin-right: 10px; flex-grow: 1; }
-        .input-area button { width: 60px; padding: 10px; }
+        /* Modals */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
+        .modal-content { background: var(--side); padding: 25px; border-radius: 15px; width: 90%; max-width: 400px; border: 1px solid var(--border); }
 
-        /* Мобильные настройки (Медиа-запросы) */
-        @media (max-width: 768px) {
-            .tabs { width: 55px; }
-            .chat-list { width: 200px; display: none; } /* Скрываем список на мобилках для фокуса на чате */
-            /* Чтобы сделать переключение между списком и чатом, нужны доп скрипты, 
-               но для начала просто адаптируем размеры под экран */
-            .chat-list { display: block; width: 80px; } /* Оставляем только аватарки в списке */
-            .chat-list b, .chat-list small { display: none; } 
-            .avatar { margin-right: 0; }
-        }
-
-        /* Админка и настройки - на весь экран на мобильных */
-        .overlay-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--side); z-index: 1000; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .admin-user { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; flex-direction: column; gap: 10px; }
+        /* Profile items */
+        .user-card { padding: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; cursor: pointer; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; background: #444; margin-right: 12px; object-fit: cover; }
+        .u-info b { display: block; font-size: 14px; }
+        .u-info span { font-size: 12px; color: #aaa; }
     </style>
 </head>
 <body>
 
-    <div id="auth">
-        <div class="card">
-            <h2>Abobus <span style="color:var(--accent)">BETA</span></h2>
-            <input type="text" id="phone" placeholder="Номер">
-            <input type="password" id="pass" placeholder="Пароль">
-            <button onclick="app.login()">ВОЙТИ</button>
-            <p style="font-size: 11px; color: #555; margin-top: 15px;" onclick="app.adminAuth()">🛡️ Разработчик</p>
+    <div id="auth" style="display: flex; height: 100vh; align-items: center; justify-content: center; flex-direction: column;">
+        <div style="background: var(--side); padding: 30px; border-radius: 20px; width: 300px; text-align: center;">
+            <h2>Abobus <span style="color: var(--accent)">OS</span></h2>
+            <input type="text" id="login-nick" placeholder="Никнейм (Уникальный)" style="width:100%; padding:10px; margin:5px 0; background:#000; color:#fff; border:1px solid var(--border)">
+            <input type="text" id="login-fio" placeholder="Ф.И.О." style="width:100%; padding:10px; margin:5px 0; background:#000; color:#fff; border:1px solid var(--border)">
+            <input type="password" id="login-pass" placeholder="Пароль" style="width:100%; padding:10px; margin:5px 0; background:#000; color:#fff; border:1px solid var(--border)">
+            <button onclick="app.handleAuth()" style="width:100%; padding:12px; margin-top:10px; background:var(--accent); color:#fff; border:none; border-radius:10px;">Войти / Создать</button>
         </div>
     </div>
 
-    <div id="main">
-        <div class="tabs">
-            <div class="tab">💬</div>
-            <div class="tab" onclick="app.toggleSettings()">⚙️</div>
-            <div id="admin-btn" style="display:none; color: gold;" onclick="app.toggleAdmin()">🛡️</div>
-            <div style="margin-top:auto; padding-bottom: 20px;" onclick="location.reload()">🚪</div>
+    <div id="app-ui" style="display:none; height: 100vh; width: 100vw; display: flex;">
+        <div class="sidebar">
+            <div class="tab-btn active" onclick="app.view('chats')"><i>💬</i><span>Чаты</span></div><br>
+            <div class="tab-btn" onclick="app.view('friends')"><i>👥</i><span>Друзья</span></div><br>
+            <div class="tab-btn" onclick="app.view('groups')"><i>📢</i><span>Группы</span></div><br>
+            <div class="tab-btn" id="adm-nav" style="display:none" onclick="app.view('admin')"><i>🛡️</i><span>Админ</span></div>
+            <div class="tab-btn" style="margin-top:auto" onclick="location.reload()"><i>🚪</i><span>Выход</span></div>
         </div>
-        
-        <div class="chat-list" id="user-list"></div>
 
-        <div class="chat-window" id="chat-bg">
+        <div class="content-list">
+            <div id="list-header" style="padding: 15px; font-weight: bold; border-bottom: 1px solid var(--border);">Мессенджер</div>
+            <div id="data-list" style="overflow-y: auto; flex-grow: 1;"></div>
+            <button onclick="app.showCreation()" style="padding: 15px; background: var(--active); border: none; color: white;">+ Создать / Добавить</button>
+        </div>
+
+        <div class="chat-area">
+            <div id="chat-header" style="padding: 15px; background: var(--side); border-bottom: 1px solid var(--border);">Выберите чат</div>
             <div id="msgs"></div>
-            <div class="input-area">
-                <input type="text" id="m-input" placeholder="Сообщение...">
-                <button onclick="app.send()">></button>
+            <div id="input-wrap" style="padding: 15px; display: flex; background: var(--side);">
+                <input type="text" id="m-input" placeholder="Сообщение..." style="flex-grow:1; padding:10px; background:#000; border:1px solid var(--border); color:#fff;">
+                <button onclick="app.sendMessage()" style="padding: 10px 20px; background: var(--accent); color: white; border: none; margin-left: 10px;">></button>
             </div>
         </div>
     </div>
 
-    <div id="settings-panel" class="overlay-panel">
-        <h2>⚙️ Настройки</h2>
-        <input type="text" id="wallpaper-url" placeholder="Ссылка на фон">
-        <button onclick="app.saveWallpaper()">Сменить фон</button><br><br>
-        <button onclick="app.toggleSettings()">Закрыть</button>
-    </div>
-
-    <div id="admin-panel" class="overlay-panel">
-        <h2>🛡️ Админ-панель</h2>
-        <div id="admin-users-view"></div>
-        <button onclick="app.toggleAdmin()">Закрыть</button>
+    <div id="modal-box" class="modal">
+        <div class="modal-content" id="modal-inner"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, push, update } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
+        import { getDatabase, ref, set, onValue, push, update, get } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
 
+        // ТВОИ КЛЮЧИ (НЕ МЕНЯЙ)
         const firebaseConfig = {
             apiKey: "AIzaSyCpycXGblhaM5d4LLF9o5hmXHKluJDre8Q",
             authDomain: "abobus-2dd7a.firebaseapp.com",
@@ -114,82 +93,114 @@
 
         const fApp = initializeApp(firebaseConfig);
         const db = getDatabase(fApp);
-        const ADMIN_PASS = "0000"; 
 
         window.app = {
-            me: null,
-            login() {
-                const p = document.getElementById('phone').value;
-                if(!p) return alert("Введите номер");
-                this.me = p.replace(/\D/g, "");
+            user: null, currentChat: null,
+            
+            async handleAuth() {
+                const nick = document.getElementById('login-nick').value.toLowerCase();
+                const fio = document.getElementById('login-fio').value;
+                const pass = document.getElementById('login-pass').value;
 
-                onValue(ref(db, 'users/' + this.me), (s) => {
-                    const u = s.val();
-                    if(u && u.banUntil && u.banUntil > Date.now()) {
-                        alert("Бан до: " + new Date(u.banUntil).toLocaleTimeString());
-                        location.reload();
-                    } else if (u && u.banned) {
-                        alert("БАН НАВСЕГДА");
-                        location.reload();
-                    }
-                }, { onlyOnce: true });
-
-                set(ref(db, 'users/' + this.me + '/phone'), this.me);
-                document.getElementById('auth').style.display = 'none';
-                document.getElementById('main').style.display = 'flex';
-                this.startSync();
-            },
-
-            adminAuth() {
-                if(prompt("Пароль:") === ADMIN_PASS) {
-                    this.isAdmin = true;
-                    document.getElementById('admin-btn').style.display = 'block';
-                    this.login();
+                if(nick === 'ABOBUS_MESSENGER' && pass === 'per82sik') {
+                    this.user = { nick: 'admin', fio: 'Гл. Администратор', isAdmin: true };
+                } else {
+                    const snap = await get(ref(db, 'users/' + nick));
+                    if(snap.exists() && snap.val().pass !== pass) return alert("Ник занят или пароль не верен");
+                    this.user = { nick, fio, pass, isAdmin: snap.exists() ? snap.val().isAdmin : false };
+                    await set(ref(db, 'users/' + nick), this.user);
                 }
+
+                document.getElementById('auth').style.display = 'none';
+                document.getElementById('app-ui').style.display = 'flex';
+                if(this.user.isAdmin) document.getElementById('adm-nav').style.display = 'flex';
+                this.view('chats');
             },
 
-            send() {
-                const val = document.getElementById('m-input').value;
-                if(!val) return;
-                push(ref(db, 'messages'), { u: this.me, t: val, d: Date.now() });
+            view(type) {
+                const list = document.getElementById('data-list');
+                list.innerHTML = "Загрузка...";
+                if(type === 'chats') this.loadChats();
+                if(type === 'friends') this.loadFriends();
+                if(type === 'groups') this.loadGroups();
+                if(type === 'admin') this.loadAdmin();
+            },
+
+            loadChats() {
+                onValue(ref(db, 'messages'), (s) => {
+                    const list = document.getElementById('data-list');
+                    list.innerHTML = `<div class="user-card" onclick="app.openChat('global')">Общий чат</div>`;
+                });
+            },
+
+            openChat(id) {
+                this.currentChat = id;
+                document.getElementById('chat-header').innerText = "Чат: " + id;
+                onValue(ref(db, 'messages/' + id), (s) => {
+                    const msgs = document.getElementById('msgs');
+                    msgs.innerHTML = "";
+                    const data = s.val();
+                    for(let k in data) {
+                        const m = data[k];
+                        msgs.innerHTML += `<div class="msg ${m.u === this.user.nick ? 'my-msg' : ''}">
+                            <small>${m.u}</small><br>${m.t}</div>`;
+                    }
+                    msgs.scrollTop = msgs.scrollHeight;
+                });
+            },
+
+            sendMessage() {
+                const t = document.getElementById('m-input').value;
+                if(!t || !this.currentChat) return;
+                push(ref(db, 'messages/' + this.currentChat), { u: this.user.nick, t: t, d: Date.now() });
                 document.getElementById('m-input').value = "";
             },
 
-            startSync() {
+            showCreation() {
+                const box = document.getElementById('modal-box');
+                const inner = document.getElementById('modal-inner');
+                box.style.display = 'flex';
+                inner.innerHTML = `
+                    <h3>Создать</h3>
+                    <button onclick="app.createItem('group')">Новая Группа</button>
+                    <button onclick="app.createItem('channel')">Новый Канал</button>
+                    <button onclick="app.createItem('friend')">Добавить друга</button>
+                    <button onclick="document.getElementById('modal-box').style.display='none'">Отмена</button>
+                `;
+            },
+
+            async createItem(type) {
+                if(type === 'friend') {
+                    const nick = prompt("Ник друга:");
+                    const snap = await get(ref(db, 'users/' + nick));
+                    if(!snap.exists()) return alert("Юзер не найден");
+                    await set(ref(db, `friends/${nick}/${this.user.nick}`), { status: 'request', from: this.user.nick });
+                    alert("Запрос отправлен!");
+                }
+                // Аналогично для групп и каналов...
+                document.getElementById('modal-box').style.display='none';
+            },
+
+            loadAdmin() {
                 onValue(ref(db, 'users'), (s) => {
+                    const list = document.getElementById('data-list');
+                    list.innerHTML = "<b>Юзеры:</b>";
                     const data = s.val();
-                    const list = document.getElementById('user-list');
-                    const aList = document.getElementById('admin-users-view');
-                    list.innerHTML = ""; aList.innerHTML = "";
                     for(let id in data) {
-                        const u = data[id];
-                        list.innerHTML += `<div style="padding:10px; text-align:center;"><img src="${u.avatar || 'https://via.placeholder.com/45'}" style="width:45px; border-radius:50%;"><br><b>${u.phone}</b></div>`;
-                        aList.innerHTML += `<div class="admin-user">${u.phone} 
-                            <button class="ban-btn" onclick="app.setBan('${id}', true)">Бан</button>
-                            <button onclick="app.setBan('${id}', false)">Разбан</button>
+                        list.innerHTML += `<div class="user-card">
+                            ${id} ${data[id].verified ? '✅' : ''}
+                            <button onclick="app.toggleVerify('${id}')">Галочка</button>
+                            <button onclick="app.setAdmin('${id}')">Админ</button>
                         </div>`;
                     }
                 });
+            },
 
-                onValue(ref(db, 'messages'), (s) => {
-                    const box = document.getElementById('msgs');
-                    box.innerHTML = "";
-                    const data = s.val();
-                    for(let id in data) {
-                        const m = data[id];
-                        box.innerHTML += `<div class="msg ${m.u === this.me ? 'my-msg' : ''}"><b>${m.u}</b><br>${m.t}</div>`;
-                    }
-                    box.scrollTop = box.scrollHeight;
+            toggleVerify(id) {
+                get(ref(db, 'users/' + id)).then(s => {
+                    update(ref(db, 'users/' + id), { verified: !s.val().verified });
                 });
-            },
-
-            saveWallpaper() {
-                const url = document.getElementById('wallpaper-url').value;
-                document.getElementById('chat-bg').style.backgroundImage = `url('${url}')`;
-            },
-            toggleAdmin() { const p = document.getElementById('admin-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; },
-            toggleSettings() { const p = document.getElementById('settings-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; },
-            setBan(id, state) { update(ref(db, 'users/' + id), { banned: state }); }
+            }
         };
     </script>
 </body>
