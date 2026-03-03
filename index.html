@@ -112,7 +112,7 @@
                 const pass = document.getElementById('auth-pass').value;
 
                 // ЛОГИН АДМИНА
-                if(nick === 'admin' && pass === 'per14sik') {
+                if(nick === 'admin' && pass === '123') {
                     this.me = { nick: 'admin', fio: 'Разработчик', isAdmin: true, verified: true };
                 } else {
                     const s = await get(ref(db, 'users/' + nick));
@@ -241,3 +241,4 @@
     </script>
 </body>
 </html>
+
